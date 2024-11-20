@@ -4,6 +4,8 @@ from transformers import GPT2TokenizerFast
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_community.vectorstores import FAISS
 from sentence_transformers import SentenceTransformer
+from db.faiss_handler import FaissHandler
+
 
 class PdfReader:
 
@@ -67,6 +69,14 @@ if __name__ == "__main__":
     # Read the PDF, split into chunks, and generate embeddings
     embeddings, chunks = pdf_reader.read_pdf(pdf_path, output_txt_path)
 
+    FaissHandler.save_to_vector_db(
+        embeddings,
+        chunks,
+        'db/faiss_index.faiss',
+        'db/metadata.pkl'
+    )
+
+    #value  = FaissHandler.get_first_value('db/faiss_index.faiss','db/metadata.pkl')
     # Print details of the first chunk
-    print(f"First chunk: {chunks[0].page_content}")
-    print(f"First embedding: {embeddings[0]}")
+    #print(f"First value: {value}")
+    #print(f"First embedding: {embeddings[0]}")
