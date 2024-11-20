@@ -2,3 +2,12 @@ langchain
 langchain_community
 streamlit
 gradio
+pypdf
+pandas
+matplotlib
+tiktoken
+textract
+openai
+faiss-cpu
+transformers
+sentence-transformers

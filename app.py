@@ -1,4 +1,5 @@
 from services.answering.answering_service import AnsweringService
+from util.pdfreader import PdfReader
 def run_chatbot():
     chatbot_service = AnsweringService()
     print("ChatBot: Hello! Type 'exit' to end the conversation.")
