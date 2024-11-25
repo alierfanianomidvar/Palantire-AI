@@ -97,7 +97,8 @@ class FaissHandler:
         first_embedding = index.reconstruct(0)  # Retrieve the first vector
         first_chunk = chunks[0]  # Retrieve the first chunk
 
-        return {
-            "embedding": first_embedding,
-            "chunk": first_chunk
-        }
+        print("we are here")
+        print(first_chunk)
+        print(first_embedding)
+
+        return first_chunk
