@@ -3,15 +3,14 @@ import textract
 from transformers import GPT2TokenizerFast
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_community.vectorstores import FAISS
-from sentence_transformers import SentenceTransformer
 from db.faiss_handler import FaissHandler
-
+from embedding_model.embeddings_model import EmbeddingModel
 
 class PdfReader:
 
     def __init__(self):
         self.text = ''
-        self.model = SentenceTransformer('sentence-transformers/all-MiniLM-L6-v2')
+
 
     def count_tokens(self, text: str) -> int:
         """Counts the number of tokens in the text using GPT2 tokenizer."""
@@ -19,9 +18,7 @@ class PdfReader:
         tokens = tokenizer(text)['input_ids']
         return len(tokens)
 
-    def generate_embeddings(self, texts: list):
-        embeddings = self.model.encode(texts)
-        return embeddings
+
 
     def read_pdf(self, pdf_path: str, output_txt_path: str):
         """Reads a PDF, extracts text, splits into chunks, and generates embeddings."""
@@ -54,7 +51,7 @@ class PdfReader:
 
         # Generate embeddings in batches
         print("Generating embeddings for chunks...")
-        embeddings = self.generate_embeddings(chunk_texts)
+        embeddings = EmbeddingModel.generate_embeddings_list(chunk_texts)
 
         print(f"Generated {len(embeddings)} embeddings.")
         return embeddings, chunks

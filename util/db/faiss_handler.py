@@ -2,7 +2,7 @@ import faiss
 import pickle
 import numpy as np
 
-
+from ..embedding_model.embeddings_model import EmbeddingModel
 class FaissHandler:
 
     @staticmethod
@@ -102,3 +102,70 @@ class FaissHandler:
         print(first_embedding)
 
         return first_chunk
+
+    @staticmethod
+    def get_closest_result(
+            user_input,
+            faiss_index_path,
+            metadata_path):
+        """
+        Find the closest result to the user input using cosine similarity and Euclidean distance.
+
+        Args:
+            user_input (str): The user's query/input.
+            embedding_model: Pre-trained embedding model (e.g., SentenceTransformer).
+            faiss_index_path (str): Path to the FAISS index file.
+            metadata_path (str): Path to the metadata (chunks) file.
+
+        Returns:
+            dict: Closest result with cosine similarity and Euclidean distance scores.
+        """
+        embedding_model = EmbeddingModel()
+
+        # Load FAISS index
+        index = faiss.read_index(faiss_index_path)
+
+        # Load metadata (chunks)
+        with open(metadata_path, "rb") as metadata_file:
+            chunks = pickle.load(metadata_file)
+
+        # Check if the index and metadata are not empty
+        if index.ntotal == 0:
+            raise ValueError("FAISS index is empty.")
+        if len(chunks) == 0:
+            raise ValueError("Metadata is empty.")
+
+        # Convert the user input into a vector
+        user_vector = embedding_model.generate_embeddings_list([user_input])[0]
+        user_vector = user_vector / np.linalg.norm(user_vector)
+
+        distances, indices = index.search(np.expand_dims(user_vector.astype('float32'), axis=0), 5)
+
+        # Step 3: Retrieve top 5 vectors and refine similarities
+        top_indices = indices[0]
+        top_vectors = np.array([index.reconstruct(int(idx)) for idx in top_indices])
+
+        # Normalize top vectors for cosine similarity refinement
+        normalized_top_vectors = top_vectors / np.linalg.norm(top_vectors, axis=1, keepdims=True)
+
+        print("Top indices:", top_indices)
+        print("Type of each index:", [type(idx) for idx in top_indices])
+
+        # Compute refined cosine similarities
+        refined_similarities = np.dot(normalized_top_vectors, user_vector)
+
+        # Step 4: Build results with metadata and refined scores
+        closest_results = []
+        for i, idx in enumerate(top_indices):
+            if idx < len(chunks):
+                closest_results.append({
+                    "rank": i + 1,
+                    "chunk": chunks[idx],
+                    "cosine_similarity": float(distances[0][i]),  # Original similarity
+                    "refined_similarity": float(refined_similarities[i])  # Secondary refined similarity
+                })
+
+        # Step 5: Sort results by refined similarity and return the top 2
+        closest_results = sorted(closest_results, key=lambda x: x["refined_similarity"], reverse=True)
+        return closest_results[:2]  # Return the top 2 results
+
