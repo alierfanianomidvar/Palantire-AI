@@ -3,6 +3,8 @@ import pickle
 import numpy as np
 
 from ..embedding_model.embeddings_model import EmbeddingModel
+from ..re_ranker import ReRanker
+
 class FaissHandler:
 
     @staticmethod
@@ -108,6 +110,8 @@ class FaissHandler:
             user_input,
             faiss_index_path,
             metadata_path):
+
+        reRanker = ReRanker()
         """
         Find the closest result to the user input using cosine similarity and Euclidean distance.
 
@@ -141,31 +145,20 @@ class FaissHandler:
 
         distances, indices = index.search(np.expand_dims(user_vector.astype('float32'), axis=0), 5)
 
-        # Step 3: Retrieve top 5 vectors and refine similarities
-        top_indices = indices[0]
-        top_vectors = np.array([index.reconstruct(int(idx)) for idx in top_indices])
 
-        # Normalize top vectors for cosine similarity refinement
-        normalized_top_vectors = top_vectors / np.linalg.norm(top_vectors, axis=1, keepdims=True)
-
-        print("Top indices:", top_indices)
-        print("Type of each index:", [type(idx) for idx in top_indices])
-
-        # Compute refined cosine similarities
-        refined_similarities = np.dot(normalized_top_vectors, user_vector)
-
-        # Step 4: Build results with metadata and refined scores
+        # Retrieve metadata for the closest results
         closest_results = []
-        for i, idx in enumerate(top_indices):
+        for i, idx in enumerate(indices[0]):
             if idx < len(chunks):
+                chunk_content = chunks[idx].page_content if hasattr(chunks[idx], 'page_content') else str(chunks[idx])
+
                 closest_results.append({
                     "rank": i + 1,
-                    "chunk": chunks[idx],
-                    "cosine_similarity": float(distances[0][i]),  # Original similarity
-                    "refined_similarity": float(refined_similarities[i])  # Secondary refined similarity
+                    "chunk": chunk_content,
+                    "cosine_similarity": float(distances[0][i])  # Distances are cosine similarities
                 })
 
-        # Step 5: Sort results by refined similarity and return the top 2
-        closest_results = sorted(closest_results, key=lambda x: x["refined_similarity"], reverse=True)
-        return closest_results[:2]  # Return the top 2 results
+        closest_results_re_ranked = reRanker.batch_evaluate(user_input, closest_results)
+
+        return closest_results_re_ranked
 
